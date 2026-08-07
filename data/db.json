@@ -1,0 +1,17 @@
+{
+  "users": [
+    {
+      "id": "9e52af0c-ec3f-4d30-8ec9-7e44016d07b4",
+      "name": "Vaishali Sharma",
+      "email": "vaishali@gmail.com",
+      "passwordHash": "$2a$10$w.J3M6L7Ff7ztZf0n41Cz.byx7YbgnZ7B5yCAxXIA2JyYsJshzQAG",
+      "phone": "9876543210",
+      "role": "user",
+      "createdAt": "2026-08-06T14:34:44.645Z"
+    }
+  ],
+  "contacts": [],
+  "sosAlerts": [],
+  "reports": [],
+  "timers": []
+}
