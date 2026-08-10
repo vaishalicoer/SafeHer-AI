@@ -18,12 +18,15 @@ const incidentRoutes = require("./routes/incidentRoutes");
 const app = express();
 
 // ================= DATABASE =================
+
 connectDB();
 
 // ================= RATE LIMITER =================
+
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Maximum 10 attempts
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+
   message: {
     success: false,
     message: "Too many attempts. Please try again after 15 minutes.",
@@ -31,15 +34,48 @@ const authLimiter = rateLimit({
 });
 
 // ================= MIDDLEWARE =================
+
 app.use(helmet());
 
 // ================= CORS =================
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
+];
+
 app.use(
   cors({
-    origin:
-      "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: function (origin, callback) {
+      // Allow requests without an origin
+      // Example: Postman / Thunder Client
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow localhost and Vercel frontend
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+
     credentials: true,
   })
 );
@@ -48,27 +84,50 @@ app.use(morgan("dev"));
 
 app.use(express.json());
 
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
 
 // ================= ROUTES =================
 
 // Authentication
-app.use("/api/auth", authLimiter, authRoutes);
+app.use(
+  "/api/auth",
+  authLimiter,
+  authRoutes
+);
 
 // Profile
-app.use("/api/profile", profileRoutes);
+app.use(
+  "/api/profile",
+  profileRoutes
+);
 
 // Emergency Contacts
-app.use("/api/emergency", emergencyRoutes);
+app.use(
+  "/api/emergency",
+  emergencyRoutes
+);
 
 // SOS
-app.use("/api/sos", sosRoutes);
+app.use(
+  "/api/sos",
+  sosRoutes
+);
 
 // Dashboard
-app.use("/api/dashboard", dashboardRoutes);
+app.use(
+  "/api/dashboard",
+  dashboardRoutes
+);
 
-// Incidents
-app.use("/api/incidents", incidentRoutes);
+// Incident Reporting
+app.use(
+  "/api/incidents",
+  incidentRoutes
+);
 
 // ================= HEALTH CHECK =================
 
@@ -79,7 +138,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// ================= 404 =================
+// ================= 404 ROUTE =================
 
 app.use("*", (req, res) => {
   res.status(404).json({
