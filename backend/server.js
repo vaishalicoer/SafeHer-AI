@@ -17,35 +17,61 @@ const incidentRoutes = require("./routes/incidentRoutes");
 
 const app = express();
 
-// Connect Database
+// ================= DATABASE =================
 connectDB();
 
-// Rate limiter — login/register par attack rokne ke liye
+// ================= RATE LIMITER =================
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minute window
-  max: 10, // 15 minute mein max 10 attempts allow
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Maximum 10 attempts
   message: {
     success: false,
     message: "Too many attempts. Please try again after 15 minutes.",
   },
 });
 
-// Middleware
+// ================= MIDDLEWARE =================
 app.use(helmet());
-app.use(cors());
+
+// ================= CORS =================
+app.use(
+  cors({
+    origin:
+      "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 app.use(morgan("dev"));
+
 app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// ================= ROUTES =================
+
+// Authentication
 app.use("/api/auth", authLimiter, authRoutes);
+
+// Profile
 app.use("/api/profile", profileRoutes);
+
+// Emergency Contacts
 app.use("/api/emergency", emergencyRoutes);
+
+// SOS
 app.use("/api/sos", sosRoutes);
+
+// Dashboard
 app.use("/api/dashboard", dashboardRoutes);
+
+// Incidents
 app.use("/api/incidents", incidentRoutes);
 
-// Health Check
+// ================= HEALTH CHECK =================
+
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -53,7 +79,8 @@ app.get("/", (req, res) => {
   });
 });
 
-// 404 Route
+// ================= 404 =================
+
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
@@ -61,8 +88,10 @@ app.use("*", (req, res) => {
   });
 });
 
+// ================= SERVER =================
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
