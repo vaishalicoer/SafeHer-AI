@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const connectDB = require("./config/db");
 
@@ -19,6 +20,16 @@ const app = express();
 // Connect Database
 connectDB();
 
+// Rate limiter — login/register par attack rokne ke liye
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minute window
+  max: 10, // 15 minute mein max 10 attempts allow
+  message: {
+    success: false,
+    message: "Too many attempts. Please try again after 15 minutes.",
+  },
+});
+
 // Middleware
 app.use(helmet());
 app.use(cors());
@@ -27,7 +38,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/emergency", emergencyRoutes);
 app.use("/api/sos", sosRoutes);
