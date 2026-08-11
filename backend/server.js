@@ -43,6 +43,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
+  "https://safe-her-ai-theta.vercel.app",
 ];
 
 app.use(
