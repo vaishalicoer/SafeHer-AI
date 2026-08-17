@@ -1,5 +1,7 @@
 const API_URL = "https://safeher-ai-21wi.onrender.com";
 
+// ================= AUTH =================
+
 export async function registerUser(name, email, phone, password) {
   const res = await fetch(`${API_URL}/api/auth/register`, {
     method: "POST",
@@ -17,6 +19,8 @@ export async function loginUser(email, password) {
   });
   return res.json();
 }
+
+// ================= JOURNEY (Walk With Me) =================
 
 export async function startJourney(latitude, longitude, guardianContact) {
   const token = localStorage.getItem("token");
@@ -61,6 +65,43 @@ export async function getActiveJourney() {
   const token = localStorage.getItem("token");
   const res = await fetch(`${API_URL}/api/journey/active`, {
     method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res.json();
+}
+
+// ================= EMERGENCY CONTACTS =================
+
+export async function addEmergencyContact(name, phone, relation, category) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/emergency`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ name, phone, relation, category }),
+  });
+  return res.json();
+}
+
+export async function getEmergencyContacts() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/emergency`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res.json();
+}
+
+export async function deleteEmergencyContact(id) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/emergency/${id}`, {
+    method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
     },

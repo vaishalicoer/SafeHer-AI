@@ -7,7 +7,7 @@ exports.addContact = async (req, res) => {
 
     try {
 
-        const { name, phone, relation } = req.body;
+        const { name, phone, relation, category } = req.body;
 
         const contact = await EmergencyContact.create({
 
@@ -18,6 +18,8 @@ exports.addContact = async (req, res) => {
             phone,
 
             relation,
+
+            category,
 
         });
 

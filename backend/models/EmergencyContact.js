@@ -23,6 +23,12 @@ const emergencyContactSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    category: {
+      type: String,
+      enum: ["Family", "Friend", "Warden", "Security", "Hospital", "Helpline", "Other"],
+      default: "Family",
+    },
   },
   {
     timestamps: true,
