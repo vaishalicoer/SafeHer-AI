@@ -1,13 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import ProfileMenu from '../components/ProfileMenu.jsx'
+import { startJourney, updateJourneyLocation, endJourney, getActiveJourney } from '../api.js'
 
 const GMAPS_KEY_ENV = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 export default function Journey({ userName, onLogOut }) {
   const { showToast } = useApp()
 
-  const [secondsLeft, setSecondsLeft] = useState(8 * 60)
+  // ===== REAL JOURNEY STATE =====
+  const [journeyId, setJourneyId] = useState(null)
+  const [isSharing, setIsSharing] = useState(false)
+  const [realCoords, setRealCoords] = useState(null)
+  const [journeyLoading, setJourneyLoading] = useState(false)
+  const updateIntervalRef = useRef(null)
+
   const [route, setRoute] = useState('safe')
   const [dotPos, setDotPos] = useState({ cx: 140, cy: 82 })
 
@@ -25,6 +32,96 @@ export default function Journey({ userName, onLogOut }) {
   const [timerRemaining, setTimerRemaining] = useState(15 * 60)
   const [timerRunning, setTimerRunning] = useState(false)
   const timerIntervalRef = useRef(null)
+
+  // Check if a journey is already active (e.g. after page refresh)
+  useEffect(() => {
+    async function checkActive() {
+      const result = await getActiveJourney()
+      if (result.success && result.journey) {
+        setJourneyId(result.journey._id)
+        setIsSharing(true)
+        setRealCoords(result.journey.currentLocation)
+        startLocationUpdates(result.journey._id)
+      }
+    }
+    checkActive()
+    return () => clearInterval(updateIntervalRef.current)
+  }, [])
+
+  function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation not supported'))
+        return
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    })
+  }
+
+  function startLocationUpdates(id) {
+    clearInterval(updateIntervalRef.current)
+    updateIntervalRef.current = setInterval(async () => {
+      try {
+        const coords = await getCurrentPosition()
+        setRealCoords(coords)
+        await updateJourneyLocation(id, coords.latitude, coords.longitude)
+      } catch (err) {
+        console.error('Location update failed:', err)
+      }
+    }, 15000)
+  }
+
+  async function handleToggleSharing() {
+    if (isSharing) {
+      // Stop sharing / end journey
+      if (journeyId) {
+        setJourneyLoading(true)
+        await endJourney(journeyId)
+        setJourneyLoading(false)
+      }
+      clearInterval(updateIntervalRef.current)
+      setIsSharing(false)
+      setJourneyId(null)
+      showToast('Live location sharing stopped')
+    } else {
+      // Start sharing / start journey
+      setJourneyLoading(true)
+      try {
+        const coords = await getCurrentPosition()
+        const result = await startJourney(coords.latitude, coords.longitude)
+        if (result.success) {
+          setJourneyId(result.journey._id)
+          setIsSharing(true)
+          setRealCoords(coords)
+          startLocationUpdates(result.journey._id)
+          showToast('Live location sharing started — Guardians can see your location')
+        } else {
+          showToast(result.message || 'Could not start sharing')
+        }
+      } catch (err) {
+        showToast('Location access denied — enable it in your browser settings')
+      }
+      setJourneyLoading(false)
+    }
+  }
+
+  async function handleImSafe() {
+    if (journeyId) {
+      setJourneyLoading(true)
+      await endJourney(journeyId)
+      clearInterval(updateIntervalRef.current)
+      setIsSharing(false)
+      setJourneyId(null)
+      setJourneyLoading(false)
+    }
+    showToast("Marked as arrived safely ✓")
+  }
+
+  const [secondsLeft, setSecondsLeft] = useState(8 * 60)
 
   useEffect(() => {
     const total = route === 'fast' ? 8 * 60 : 12 * 60
@@ -68,10 +165,12 @@ export default function Journey({ userName, onLogOut }) {
       return
     }
     window.initGMap = function () {
-      const center = { lat: 28.6139, lng: 77.209 }
+      const center = realCoords
+        ? { lat: realCoords.latitude, lng: realCoords.longitude }
+        : { lat: 28.6139, lng: 77.209 }
       const map = new window.google.maps.Map(mapCanvasRef.current, {
         center,
-        zoom: 14,
+        zoom: 15,
         disableDefaultUI: true,
         styles: [{ elementType: 'geometry', stylers: [{ color: '#14123A' }] }]
       })
@@ -121,7 +220,7 @@ export default function Journey({ userName, onLogOut }) {
   return (
     <div className="screen-inner">
       <div className="p-head">
-        <div><h2>Journey</h2><p>Tracking active · Walking</p></div>
+        <div><h2>Journey</h2><p>{isSharing ? 'Tracking active · Live' : 'Tracking inactive'}</p></div>
         <ProfileMenu initial={userName?.[0]?.toUpperCase() || 'V'} onLogOut={onLogOut} />
       </div>
 
@@ -151,6 +250,11 @@ export default function Journey({ userName, onLogOut }) {
           </div>
         )}
         <div id="gmapCanvas" ref={mapCanvasRef} style={{ display: mapLoaded ? 'block' : 'none', width: '100%', height: 150, borderRadius: 14 }}></div>
+        {realCoords && (
+          <div style={{ padding: '8px 4px', fontSize: 12, color: 'var(--text-faint)' }}>
+            📍 Real location: {realCoords.latitude.toFixed(5)}, {realCoords.longitude.toFixed(5)}
+          </div>
+        )}
         <div className="map-key-row">
           <input type="text" placeholder="Paste Google Maps API key to enable live map" value={gmapKey} onChange={(e) => setGmapKey(e.target.value)} />
           <button onClick={loadRealMap}>Connect</button>
@@ -204,11 +308,18 @@ export default function Journey({ userName, onLogOut }) {
         </div>
         <div className="timer-actions">
           <button className="timer-start" onClick={toggleTimer}>{timerRunning ? 'Cancel Timer' : 'Start Timer'}</button>
-          <button className="timer-safe" onClick={() => showToast("Marked as arrived safely ✓")}>I'm Safe</button>
+          <button className="timer-safe" onClick={handleImSafe} disabled={journeyLoading}>I'm Safe</button>
         </div>
       </div>
 
-      <div className="toggle-row"><div><b>Share live location</b><span>Visible to 3 Guardians</span></div><div className="switch on"></div></div>
+      <div className="toggle-row">
+        <div><b>Share live location</b><span>{isSharing ? 'Currently sharing — Guardians can see you' : 'Tap to start sharing'}</span></div>
+        <div
+          className={`switch ${isSharing ? 'on' : ''}`}
+          onClick={handleToggleSharing}
+          style={{ cursor: journeyLoading ? 'wait' : 'pointer', opacity: journeyLoading ? 0.6 : 1 }}
+        ></div>
+      </div>
       <div className="toggle-row"><div><b>Auto-alert if I stop moving</b><span>Trigger after 90 seconds</span></div><div className="switch on"></div></div>
     </div>
   )

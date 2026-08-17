@@ -14,6 +14,7 @@ const emergencyRoutes = require("./routes/emergencyRoutes");
 const sosRoutes = require("./routes/sosRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
+const journeyRoutes = require("./routes/journeyRoutes");
 
 const app = express();
 
@@ -128,6 +129,12 @@ app.use(
 app.use(
   "/api/incidents",
   incidentRoutes
+);
+
+// Journey (Walk With Me)
+app.use(
+  "/api/journey",
+  journeyRoutes
 );
 
 // ================= HEALTH CHECK =================
