@@ -109,4 +109,31 @@ export async function deleteEmergencyContact(id) {
   return res.json();
 }
 
+// ================= SOS =================
+
+export async function triggerSOS(latitude, longitude) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/sos/trigger`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ latitude, longitude }),
+  });
+  return res.json();
+}
+
+export async function cancelSOS() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/sos/cancel`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res.json();
+}
+
 export default API_URL;

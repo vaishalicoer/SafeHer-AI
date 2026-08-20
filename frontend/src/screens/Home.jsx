@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import ProfileMenu from '../components/ProfileMenu.jsx'
+import { triggerSOS, cancelSOS } from '../api.js'
 
 const DEFAULT_LOCATIONS = [
   { icon: '🚓', name: 'Connaught Place Police Station', meta: '0.6 km · Open 24 hrs', q: 'Police+Station+near+me' },
@@ -15,6 +16,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
   // SOS state
   const [holdPct, setHoldPct] = useState(0)
   const [alerted, setAlerted] = useState(false)
+  const [sosLoading, setSosLoading] = useState(false)
   const holdInterval = useRef(null)
   const holdStart = useRef(null)
 
@@ -52,12 +54,45 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
     clearInterval(holdInterval.current)
     if (!alerted) setHoldPct(0)
   }
-  function triggerAlert() {
+
+  async function triggerAlert() {
     setAlerted(true)
+    setSosLoading(true)
+
+    // Get real location and send to backend
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords
+          const result = await triggerSOS(latitude, longitude)
+          if (result.success) {
+            showToast('SOS Alert sent — Guardians notified with your location')
+          } else {
+            showToast(result.message || 'Could not send SOS')
+          }
+          setSosLoading(false)
+        },
+        async () => {
+          // No location permission — still trigger SOS without coords
+          const result = await triggerSOS(null, null)
+          showToast(result.success ? 'SOS Alert sent (location unavailable)' : 'Could not send SOS')
+          setSosLoading(false)
+        }
+      )
+    } else {
+      const result = await triggerSOS(null, null)
+      showToast(result.success ? 'SOS Alert sent' : 'Could not send SOS')
+      setSosLoading(false)
+    }
   }
-  function resetAlert() {
+
+  async function resetAlert() {
     setAlerted(false)
     setHoldPct(0)
+    setSosLoading(true)
+    await cancelSOS()
+    setSosLoading(false)
+    showToast('SOS Alert cancelled')
   }
 
   function toggleVoiceSOS() {
@@ -180,7 +215,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
         <div className="pulse-dot"></div>
         <div className="txt">
           <b>{alerted ? 'Alert sent to your Guardians' : "You're marked Safe"}</b>
-          <span>{alerted ? 'Priya, Rhea & Sam notified · Live location on' : 'No active journey · Location private'}</span>
+          <span>{alerted ? 'Guardians notified · Live location on' : 'No active journey · Location private'}</span>
         </div>
       </div>
 
@@ -193,6 +228,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
           onMouseLeave={cancelHold}
           onTouchEnd={cancelHold}
           onClick={() => { if (alerted) resetAlert() }}
+          disabled={sosLoading}
         >
           <div className="sos-progress" style={{ '--p': holdPct }}></div>
           <div className="ico">🛡️</div>
@@ -226,7 +262,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
           <span>{isRecording ? 'Tap to stop & save' : 'Audio evidence'}</span>
         </div>
         <div className="qa" onClick={() => switchPanel('circle')}>
-          <div className="qi">👥</div><b>Call Guardian</b><span>Priya · 2 min away</span>
+          <div className="qi">👥</div><b>Call Guardian</b><span>Open Guardian Circle</span>
         </div>
       </div>
 
@@ -242,7 +278,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
         <div className="ti">✨</div>
         <div>
           <b>Tonight's tip</b>
-          <p>Your walk home is 12 min after dark. Want me to start a tracked journey and notify Priya when you arrive?</p>
+          <p>Your walk home is 12 min after dark. Want me to start a tracked journey and notify your Guardians when you arrive?</p>
         </div>
       </div>
 
