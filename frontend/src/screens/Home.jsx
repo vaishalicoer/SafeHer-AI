@@ -35,6 +35,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS)
 
   function startHold() {
+    console.log("startHold called, alerted =", alerted)
     if (alerted) {
       resetAlert()
       return
@@ -46,6 +47,7 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
       setHoldPct(pct)
       if (pct >= 100) {
         clearInterval(holdInterval.current)
+        console.log("Hold reached 100%, calling triggerAlert")
         triggerAlert()
       }
     }, 30)
@@ -56,15 +58,18 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
   }
 
   async function triggerAlert() {
+    console.log("triggerAlert called")
     setAlerted(true)
     setSosLoading(true)
 
-    // Get real location and send to backend
     if (navigator.geolocation) {
+      console.log("Geolocation available, requesting position...")
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
+          console.log("Got position:", pos.coords)
           const { latitude, longitude } = pos.coords
           const result = await triggerSOS(latitude, longitude)
+          console.log("SOS backend result:", result)
           if (result.success) {
             showToast('SOS Alert sent — Guardians notified with your location')
           } else {
@@ -72,14 +77,16 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
           }
           setSosLoading(false)
         },
-        async () => {
-          // No location permission — still trigger SOS without coords
+        async (err) => {
+          console.log("Geolocation error:", err)
           const result = await triggerSOS(null, null)
+          console.log("SOS backend result (no location):", result)
           showToast(result.success ? 'SOS Alert sent (location unavailable)' : 'Could not send SOS')
           setSosLoading(false)
         }
       )
     } else {
+      console.log("Geolocation not supported")
       const result = await triggerSOS(null, null)
       showToast(result.success ? 'SOS Alert sent' : 'Could not send SOS')
       setSosLoading(false)
