@@ -15,6 +15,7 @@ const sosRoutes = require("./routes/sosRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
 const journeyRoutes = require("./routes/journeyRoutes");
+const medicalRoutes = require("./routes/medicalRoutes");
 
 const app = express();
 
@@ -135,6 +136,12 @@ app.use(
 app.use(
   "/api/journey",
   journeyRoutes
+);
+
+// Medical Emergency Support
+app.use(
+  "/api/medical",
+  medicalRoutes
 );
 
 // ================= HEALTH CHECK =================

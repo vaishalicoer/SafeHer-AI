@@ -136,4 +136,19 @@ export async function cancelSOS() {
   return res.json();
 }
 
+// ================= MEDICAL SUPPORT =================
+
+export async function triggerMedicalAlert(latitude, longitude, note) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/api/medical/trigger`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ latitude, longitude, note }),
+  });
+  return res.json();
+}
+
 export default API_URL;

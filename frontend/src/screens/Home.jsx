@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import ProfileMenu from '../components/ProfileMenu.jsx'
-import { triggerSOS, cancelSOS } from '../api.js'
+import { triggerSOS, cancelSOS, triggerMedicalAlert } from '../api.js'
 
 const DEFAULT_LOCATIONS = [
   { icon: '🚓', name: 'Connaught Place Police Station', meta: '0.6 km · Open 24 hrs', q: 'Police+Station+near+me' },
@@ -35,7 +35,6 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
   const [locations, setLocations] = useState(DEFAULT_LOCATIONS)
 
   function startHold() {
-    console.log("startHold called, alerted =", alerted)
     if (alerted) {
       resetAlert()
       return
@@ -47,7 +46,6 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
       setHoldPct(pct)
       if (pct >= 100) {
         clearInterval(holdInterval.current)
-        console.log("Hold reached 100%, calling triggerAlert")
         triggerAlert()
       }
     }, 30)
@@ -58,18 +56,14 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
   }
 
   async function triggerAlert() {
-    console.log("triggerAlert called")
     setAlerted(true)
     setSosLoading(true)
 
     if (navigator.geolocation) {
-      console.log("Geolocation available, requesting position...")
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
-          console.log("Got position:", pos.coords)
           const { latitude, longitude } = pos.coords
           const result = await triggerSOS(latitude, longitude)
-          console.log("SOS backend result:", result)
           if (result.success) {
             showToast('SOS Alert sent — Guardians notified with your location')
           } else {
@@ -77,16 +71,13 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
           }
           setSosLoading(false)
         },
-        async (err) => {
-          console.log("Geolocation error:", err)
+        async () => {
           const result = await triggerSOS(null, null)
-          console.log("SOS backend result (no location):", result)
           showToast(result.success ? 'SOS Alert sent (location unavailable)' : 'Could not send SOS')
           setSosLoading(false)
         }
       )
     } else {
-      console.log("Geolocation not supported")
       const result = await triggerSOS(null, null)
       showToast(result.success ? 'SOS Alert sent' : 'Could not send SOS')
       setSosLoading(false)
@@ -167,6 +158,29 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
     } else {
       mediaRecorderRef.current?.stop()
       setIsRecording(false)
+    }
+  }
+
+  async function handleMedicalAlert() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords
+          const result = await triggerMedicalAlert(latitude, longitude, "Medical help needed")
+          if (result.success) {
+            showToast('Medical alert sent to your Guardians 🏥')
+          } else {
+            showToast(result.message || 'Could not send medical alert')
+          }
+        },
+        async () => {
+          const result = await triggerMedicalAlert(null, null, "Medical help needed")
+          showToast(result.success ? 'Medical alert sent (location unavailable)' : 'Could not send alert')
+        }
+      )
+    } else {
+      const result = await triggerMedicalAlert(null, null, "Medical help needed")
+      showToast(result.success ? 'Medical alert sent' : 'Could not send alert')
     }
   }
 
@@ -270,6 +284,9 @@ export default function Home({ userName, onLogOut, onStartFakeCall }) {
         </div>
         <div className="qa" onClick={() => switchPanel('circle')}>
           <div className="qi">👥</div><b>Call Guardian</b><span>Open Guardian Circle</span>
+        </div>
+        <div className="qa" onClick={handleMedicalAlert}>
+          <div className="qi">🏥</div><b>Medical Help</b><span>Discreet health alert</span>
         </div>
       </div>
 
