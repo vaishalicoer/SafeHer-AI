@@ -16,6 +16,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
 const journeyRoutes = require("./routes/journeyRoutes");
 const medicalRoutes = require("./routes/medicalRoutes");
+const rideRoutes = require("./routes/rideRoutes");
+
+// ================= APP =================
 
 const app = express();
 
@@ -44,20 +47,27 @@ app.use(helmet());
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+
+  // Vercel Frontend
   "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
   "https://safe-her-ai-theta.vercel.app",
+
+  // Android APK (Capacitor WebView)
+  "capacitor://localhost",
+  "http://localhost",
+  "https://localhost",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
       // Allow requests without an origin
-      // Example: Postman / Thunder Client
+      // Example: Postman / Thunder Client / mobile apps
       if (!origin) {
         return callback(null, true);
       }
 
-      // Allow localhost and Vercel frontend
+      // Allow approved frontend origins
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -83,15 +93,22 @@ app.use(
   })
 );
 
-app.use(morgan("dev"));
+// ================= BODY PARSER =================
 
-app.use(express.json());
+// JSON body
+app.use(express.json({ limit: "10mb" }));
 
+// URL encoded body
 app.use(
   express.urlencoded({
     extended: true,
+    limit: "10mb",
   })
 );
+
+// ================= LOGGER =================
+
+app.use(morgan("dev"));
 
 // ================= ROUTES =================
 
@@ -132,7 +149,7 @@ app.use(
   incidentRoutes
 );
 
-// Journey (Walk With Me)
+// Journey / Walk With Me
 app.use(
   "/api/journey",
   journeyRoutes
@@ -144,6 +161,12 @@ app.use(
   medicalRoutes
 );
 
+// Ride Photo Storage
+app.use(
+  "/api/ride",
+  rideRoutes
+);
+
 // ================= HEALTH CHECK =================
 
 app.get("/", (req, res) => {
@@ -153,12 +176,30 @@ app.get("/", (req, res) => {
   });
 });
 
-// ================= 404 ROUTE =================
+// ================= 404 =================
 
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
     message: "Route Not Found",
+  });
+});
+
+// ================= ERROR HANDLER =================
+
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err.message);
+
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      success: false,
+      message: "CORS policy blocked this request",
+    });
+  }
+
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
   });
 });
 
