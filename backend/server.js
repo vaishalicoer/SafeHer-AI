@@ -45,6 +45,7 @@ app.use(helmet());
 // ================= CORS =================
 
 const allowedOrigins = [
+  // Local development
   "http://localhost:5173",
   "http://localhost:3000",
 
@@ -52,51 +53,61 @@ const allowedOrigins = [
   "https://safe-her-fo2se7nsq-vaishali-sharmas-projects-bceb4ef5.vercel.app",
   "https://safe-her-ai-theta.vercel.app",
 
-  // Android APK (Capacitor WebView)
+  // Android / Capacitor WebView
   "capacitor://localhost",
   "http://localhost",
   "https://localhost",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests without an origin
-      // Example: Postman / Thunder Client / mobile apps
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests without an Origin
+    // Example: Postman, Thunder Client, some mobile requests
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      // Allow approved frontend origins
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    // Allow approved frontend origins
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      return callback(new Error("Not allowed by CORS"));
-    },
+    console.log("❌ CORS blocked origin:", origin);
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "PATCH",
-      "OPTIONS",
-    ],
+    return callback(new Error("Not allowed by CORS"));
+  },
 
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "PATCH",
+    "OPTIONS",
+  ],
 
-    credentials: true,
-  })
-);
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
+
+  credentials: true,
+};
+
+// Apply CORS
+app.use(cors(corsOptions));
+
+// Handle browser preflight requests
+app.options("*", cors(corsOptions));
 
 // ================= BODY PARSER =================
 
 // JSON body
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+  })
+);
 
 // URL encoded body
 app.use(
